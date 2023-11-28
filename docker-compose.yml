@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+
+  mysql-virtual-thread:
+   image: mysql
+   container_name: mysql-virtual-thread
+   environment:
+    MYSQL_ROOT_PASSWORD: pass1234
+   ports:
+    - "3306:3306"
+   volumes:
+    - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    - /var/lib/mysql
+   command: --init-file /docker-entrypoint-initdb.d/init.sql
+   healthcheck:
+    test: "/usr/bin/mysql --user=root --password=pass1234 --execute \"SHOW DATABASES;\""
+    interval: 2s
+    timeout: 20s
+    retries: 10
+
+  application-platform-thread:
+    image: wdotto/application-platform-thread
+    container_name: application-platform-thread
+    build: 
+       context: ./spring-boot-3-java-21-ptf-thread
+       dockerfile: Dockerfile
+    ports:
+      - "8090:8090"
+    depends_on:
+      mysql-virtual-thread:
+       condition: service_healthy
+    links:
+      - mysql-virtual-thread
+
+  application-virtual-thread:
+    image: wdotto/application-virtual-thread
+    container_name: application-virtual-thread
+    build: 
+       context: ./spring-boot-3-java-21-virtual-thread
+       dockerfile: Dockerfile
+    ports:
+      - "8091:8091"
+    depends_on:
+      mysql-virtual-thread:
+       condition: service_healthy
+    links:
+      - mysql-virtual-thread
